@@ -1,36 +1,38 @@
-SRCS    = client.c server.c
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    Makefile                                           :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: reldahli <reldahli@student.42.fr>          +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2024/06/19 16:31:32 by reldahli          #+#    #+#              #
+#    Updated: 2024/06/19 16:54:34 by reldahli         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
 
-OBJS    = $(SRCS:.c=.o)
+# Variabls
+SERVER = server
+CLIENT = client
+CC	=	cc
+RM	=	rm -rf
+CFLAGS	=	-Wall -Wextra -Werror
 
-CC      = gcc
-RM      = rm -f
+# Builds both
+all: 		$(SERVER)	$(CLIENT)
 
-CFLAGS  = -Wall -Wextra -Werror -Ilibft
+# Rule to build the SERVER executable from server.c
+$(SERVER):	server.c
+		@$(CC) $(FLAGS) $<  -o $@
+# Rule to build the CLIENT executable from client.c
+$(CLIENT):	client.c
+		@$(CC) $(FLAGS) $<  -o $@
 
-LIBFT   = libft/libft.a
-
-all:    server client
-
-%.o:    %.c
-		$(CC) $(CFLAGS) -c $< -o $@
-
-server: server.o $(LIBFT)
-		$(CC) $(CFLAGS) server.o -Llibft -lft -o $@
-
-client: client.o $(LIBFT)
-		$(CC) $(CFLAGS) client.o -Llibft -lft -o $@
-
-$(LIBFT):
-		$(MAKE) -C libft
-
+# Remove the server and client executables
 clean:
-		$(MAKE) clean -C libft
-		$(RM) $(OBJS)
-
+		@$(RM) $(SERVER) $(CLIENT)
 fclean: clean
-		$(MAKE) fclean -C libft
-		$(RM) server client
+		$(RM)
 
-re:     fclean all
+re:		fclean all
 
-.PHONY: all clean fclean re libft
+.PHONY:		all clen fclean re libft

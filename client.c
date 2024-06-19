@@ -1,114 +1,89 @@
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   client.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: reldahli <reldahli@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/06/19 14:22:54 by reldahli          #+#    #+#             */
+/*   Updated: 2024/06/19 16:29:58 by reldahli         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-void	reverse_string(char *str)
+#include "minitalk.h"
+
+int	ft_atoi(const char *str)
 {
-	int		start;
-	int		end;
-	char	temp;
+	long	number;
+	int		i;
+	int		sign;
 
-	start = 0;
-	end = strlen(str) - 1;
-	while (start < end)
+	i = 0;
+	sign = 1;
+	number = 0;
+	while ((str[i] <= 13 && str[i] >= 9) || str[i] == 32)
+		i++;
+	if (str[i] == '-' || str[i] == '+')
 	{
-		temp = str[start];
-		str[start] = str[end];
-		str[end] = temp;
-		start++;
-		end--;
+		if (str[i] == '-')
+			sign = -1;
+		i++;
+	}
+	while (str[i] >= '0' && str[i] <= '9')
+	{
+		number *= 10;
+		number += str[i] - '0';
+		i++;
+	}
+	return (number * sign);
+}
+
+void	message_sender(char c, int pid)
+{
+	int	bit_index;
+
+	bit_index = 0;
+	while (bit_index < 8)
+	{
+		if (c & (1 << bit_index))
+			kill(pid, SIGUSR1);
+		else
+			kill(pid, SIGUSR2);
+		usleep(1000);
+		bit_index++;
 	}
 }
 
-char	*decimal_to_binary(int num, char *binary)
+void	sent_finished(int sagnum)
 {
-	int	i;
+	if (sagnum == SIGUSR2)
+		write(1, "Your message is sent successfully\n", 28);
+}
 
-	if (num == 0)
+int	main(int argc, char **argv)
+{
+	int					pid;
+	int					i;
+	struct sigaction	sa_message;
+
+	if (argc == 3)
 	{
-		strcpy(binary, "0");
-		return (binary);
-	}
-	i = 0;
-	while (num > 0)
-	{
-		binary[i] = (num % 2) + '0';
-		num = num / 2;
-		i++;
-	}
-	// If the number is less than 7 bits, add 0s to the left
-	if (num == 0)
-	{
-		while (i < 7)
+		sa_message.sa_handler = sent_finished;
+		if (sigaction(SIGUSR1, &sa_message, NULL) == -1)
+			return (4);
+		if (sigaction(SIGUSR2, &sa_message, NULL) == -1)
+			return (5);
+		pid = ft_atoi(argv[1]);
+		i = 0;
+		while (argv[2][i])
 		{
-			binary[i] = '0';
+			message_sender(argv[2][i], pid);
 			i++;
 		}
+		message_sender ('\n', pid);
+		return (0);
 	}
-	binary[i] = '\0';
-	// Reverse the string to get the correct binary representation
-	reverse_string(binary);
-	return (binary);
+	else
+		write(1, "input Error\n", 12);
+	return (4);
 }
-
-void	send_finished_message(int receiver_pid)
-{
-	int	i;
-
-	i = 0;
-	while (i < 7)
-	{
-		kill(receiver_pid, SIGUSR2);
-		i++;
-		usleep(50);
-	}
-}
-
-int	main(int ac, char *av[])
-{
-	int		receiver_pid;
-	char	*message;
-	int		i;
-	char	buffer[8];
-	char	*binary;
-	int		j;
-
-	if (ac != 3)
-	{
-		printf("Usage: %s <receiver_pid> <message>\n", av[0]);
-		return (1);
-	}
-	receiver_pid = atoi(av[2]);
-	message = av[1];
-	printf("Sending message to receiver with PID: %d\n", receiver_pid);
-	;
-	printf("Message sent\n");
-	i = 0;
-	while (message[i] != '\0')
-	{
-		binary = decimal_to_binary(message[i], buffer);
-		j = 0;
-		while (binary[j] != '\0')
-		{
-			if (binary[j] == '0')
-			{
-				kill(receiver_pid, SIGUSR2);
-			}
-			else
-			{
-				kill(receiver_pid, SIGUSR1);
-			}
-			j++;
-			usleep(50);
-		}
-		i++;
-	}
-	send_finished_message(receiver_pid);
-	return (0);
-}
-
-// H in binary is 1001000
-// 127 in binary is  1111111
-// 128 in binary is 10000000

@@ -1,106 +1,83 @@
-#include <math.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   server.c                                           :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: reldahli <reldahli@student.42.fr>          +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2024/06/19 14:20:43 by reldahli          #+#    #+#             */
+/*   Updated: 2024/06/19 16:30:04 by reldahli         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
 
-int	binary_to_decimal(char *binary)
+#include "minitalk.h"
+
+void	ft_putnbr_fd(int n, int fd)
 {
-	int	decimal;
-	int	length;
+	char	c;
 
-	decimal = 0;
-	length = strlen(binary);
-	for (int i = 0; i < length; i++)
+	if (n == -2147483648)
 	{
-		if (binary[length - 1 - i] == '1')
-		{
-			decimal += (int)pow(2, i);
-		}
+		write(fd, "-", 1);
+		write(fd, "2", 1);
+		n = 147483648;
 	}
-	return (decimal);
+	if (n < 0)
+	{
+		write(fd, "-", 1);
+		n = -n;
+	}
+	if (n >= 10)
+	{
+		ft_putnbr_fd(n / 10, fd);
+		ft_putnbr_fd(n % 10, fd);
+	}
+	else
+	{
+		c = n + '0';
+		write(fd, &c, 1);
+	}
 }
 
-void	signal_handler(int sig)
+void	message_handle(int signum, siginfo_t *info, void *content)
 {
-	static char	*text = NULL;
-	static char	buffer[8];
-	static int	buffer_index = 0;
-	static int	count = 0;
-	int			decimal_value;
-	char		*new_text;
+	static int	bit_index;
+	static int	i;
 
-	static int text_len = 0; // Length of the text.
-	// Allocate initial space for text if it's NULL
-	if (text == NULL) // IN first signal
+	(void)content;
+	if (signum == SIGUSR1)
+		i |= (1 << bit_index);
+	bit_index++;
+	if (bit_index == 8)
 	{
-		text = malloc(1);
-		text[0] = '\0';
-	}
-	if (sig == SIGUSR1)
-	{
-		buffer[buffer_index++] = '1';
-	}
-	else if (sig == SIGUSR2)
-	{
-		buffer[buffer_index++] = '0';
-	}
-	count++;
-	if (count == 7)
-	{
-		buffer[7] = '\0'; // Null-terminate the buffer.
-		decimal_value = binary_to_decimal(buffer);
-		if (decimal_value == 0)
+		write(1, &i, 1);
+		if (i == '\n')
 		{
-			// Message is finished
-			printf("Received message: %s\n", text);
-			free(text);
-			text = NULL;
-			text_len = 0;
+			if (kill(info->si_pid, SIGUSR2) == -1)
+				return ;
 		}
-		else
-		{
-			// Manually reallocating memory for text.
-			new_text = (char *)malloc(text_len + 2);
-			//+1 for new char and +1 for null terminator.
-			if (new_text == NULL)
-			{
-				perror("Memory allocation failed");
-				free(text); // Free old text to avoid memory leak.
-				exit(EXIT_FAILURE);
-			}
-			// Copy existing text to new_text.
-			strcpy(new_text, text);
-			// TODO: Discuss how to make it faster.
-			new_text[text_len] = (char)decimal_value;
-			// Append the new character.
-			new_text[text_len + 1] = '\0';
-			// Null-terminate the new string.
-			free(text); // Free old memory.
-			text = new_text;
-			text_len++; // Increase the length count.
-		}
-		buffer_index = 0;
-		count = 0;
+		bit_index = 0;
+		i = 0;
 	}
 }
 
 int	main(void)
 {
-	int					myPid;
-	struct sigaction	action;
+	int					pid;
+	struct sigaction	sa_message;
 
-	myPid = getpid();
-	printf("My PID is: %d\n", myPid);
-	action.sa_handler = signal_handler;
-	action.sa_flags = 0;
-	sigemptyset(&action.sa_mask);
-	sigaction(SIGUSR1, &action, NULL);
-	sigaction(SIGUSR2, &action, NULL);
+	pid = getpid();
+	write(1, "My server PID: ", 15);
+	ft_putnbr_fd(pid, 1);
+	write(1, "\n", 1);
 	while (1)
 	{
+		sa_message.sa_sigaction = message_handle;
+		sa_message.sa_flags = SA_SIGINFO;
+		if (sigaction(SIGUSR1, &sa_message, NULL) == -1)
+			return (1);
+		if (sigaction(SIGUSR2, &sa_message, NULL) == -1)
+			return (2);
 		pause();
 	}
-	return (0);
 }
