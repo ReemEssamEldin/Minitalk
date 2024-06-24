@@ -6,11 +6,23 @@
 /*   By: reldahli <reldahli@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/06/19 14:20:43 by reldahli          #+#    #+#             */
-/*   Updated: 2024/06/19 16:30:04 by reldahli         ###   ########.fr       */
+/*   Updated: 2024/06/24 17:04:46 by reldahli         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "minitalk.h"
+/* ************************************************************************** */
+/* The (ft_putnbr_fd) function prints an integer to a file descriptor,		  */
+/* handling special cases and negative numbers recursively.					  */
+/* The (message_handle) function processes signals to reconstruct a character */
+/* bit by bit, indicating successful message receipt with a signal.			  */
+/* The (main) function sets up the server, prints its process ID,			  */
+/* and waits indefinitely for incoming signals to process.					  */
+/* ************************************************************************** */
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <signal.h>
 
 void	ft_putnbr_fd(int n, int fd)
 {
@@ -51,7 +63,7 @@ void	message_handle(int signum, siginfo_t *info, void *content)
 	if (bit_index == 8)
 	{
 		write(1, &i, 1);
-		if (i == '\n')
+		if (i == '\0')
 		{
 			if (kill(info->si_pid, SIGUSR2) == -1)
 				return ;
@@ -67,7 +79,7 @@ int	main(void)
 	struct sigaction	sa_message;
 
 	pid = getpid();
-	write(1, "My server PID: ", 15);
+	write(1, "The PID is: ", 12);
 	ft_putnbr_fd(pid, 1);
 	write(1, "\n", 1);
 	while (1)
